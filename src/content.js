@@ -207,7 +207,7 @@
     return el;
   }
 
-  function renderBar(parsed, links) {
+  function renderBar(parsed, links, prNumber) {
     const host = ensureHost();
     const bar = host.__gblBar;
     const handle = host.__gblHandle;
@@ -220,6 +220,13 @@
     brand.className = "brand";
     brand.textContent = "graptilubear";
     bar.appendChild(brand);
+
+    if (prNumber) {
+      const pn = document.createElement("span");
+      pn.className = "prnum";
+      pn.textContent = "#" + prNumber;
+      bar.appendChild(pn);
+    }
 
     for (const s of GBL.SURFACES) {
       bar.appendChild(seg(s, { current: s.key === parsed.surface, url: links[s.key] }));
@@ -286,12 +293,13 @@
     const record = await getRecord(observation);
     if (location.href !== url) return; // navigated away mid-await
     const links = resolveLinks(parsed, record);
+    const pr = pickPr(record, parsed);
 
     // stop retrying once everything resolves
     if (links.github && links.graphite && links.linearIssue && links.linearReview) {
       attempts = SCRAPE_RETRY_MAX;
     }
-    renderBar(parsed, links);
+    renderBar(parsed, links, pr ? pr.prNumber : null);
   }
 
   // --- bootstrap ------------------------------------------------------------------------

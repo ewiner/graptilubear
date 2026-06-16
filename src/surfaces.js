@@ -12,7 +12,7 @@
   // with the storage/record fields. Colors are the "you are here" accents.
   const SURFACES = [
     { key: "linearIssue", label: "Linear Issue", color: "#5e6ad2" },
-    { key: "github", label: "GitHub PR", color: "#1f2328" },
+    { key: "github", label: "GitHub PR", color: "#2da44e" },
     { key: "graphite", label: "Graphite", color: "#ff5f3a" },
     { key: "linearReview", label: "Linear Review", color: "#26b5a8" },
   ];

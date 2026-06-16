@@ -83,7 +83,8 @@ These were verified live (logged in) on PR #456 / ABC-123. If a button stops res
 
 ## Surface accent colors
 
-GitHub `#1f2328` · Graphite `#ff5f3a` · Linear Issue `#5e6ad2` · Linear Review `#26b5a8`.
+GitHub `#2da44e` (green) · Graphite `#ff5f3a` · Linear Issue `#5e6ad2` · Linear Review `#26b5a8`.
+The resolved PR number (when known) renders as a `.prnum` pill right after the brand.
 
 ## Reload after edits
 
