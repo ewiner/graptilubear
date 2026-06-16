@@ -37,6 +37,10 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture and the (fragile) scraping 
 3. Click **Load unpacked** and select this folder.
 4. Open a GitHub PR, a Graphite PR, or a Linear issue/review page — the bar appears at the top.
 
+The bar reserves space at the top (it pushes the page — including the site's own header — down,
+rather than overlapping it). Click **×** to collapse it to a small corner tab and reclaim the
+space; the collapsed state is remembered.
+
 After editing the code: hit the **reload** button on the extension card in `chrome://extensions`
 (reloads the service worker), then reload the page tab (to re-inject the content script).
 

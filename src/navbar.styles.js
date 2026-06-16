@@ -16,12 +16,19 @@
     z-index: 2147483647;
     display: block;
     color-scheme: dark;
+  }
+
+  /* Font is set HERE, on a shadow element — never on :host. The host lives in the page's light
+     DOM, so the site's own CSS (e.g. Linear's font rules) wins over :host and the children would
+     inherit the page font (Linear renders as Times, GitHub as its own face). Setting it inside
+     the shadow tree is immune to host-page CSS, so the bar looks identical everywhere. */
+  .gbl-wrap {
+    box-sizing: border-box;
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     font-size: 12px;
     line-height: 1;
   }
-
-  .gbl-wrap { box-sizing: border-box; }
+  .gbl-wrap * { font-family: inherit; }
 
   .gbl-bar {
     box-sizing: border-box;

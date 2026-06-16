@@ -38,6 +38,15 @@ Strip query/hash before parsing. The Linear-review hash is the trailing `[0-9a-f
 - **File worlds:** `surfaces.js` + `navbar.styles.js` + `content.js` are classic content scripts
   (shared isolated-world scope; they attach to a `GBL` global, no `import`/`export`). `store.js` is
   an ES module imported by `background.js` (`"type":"module"`). Don't mix the two worlds in one file.
+- **Font goes on `.gbl-wrap` (a shadow element), NEVER on `:host`.** The host is in the page's light
+  DOM, so the site's CSS overrides `:host` and children inherit the page font (Linear → Times). A
+  rule inside the shadow tree is immune. `.gbl-wrap *{font-family:inherit}` makes the `<button>`
+  match too (buttons don't inherit font by default).
+- **Page push:** space is reserved by `transform: translateY(BAR_HEIGHT)` on `<body>` (a transform
+  makes body the containing block for the site's own `position:fixed` headers, so they move down
+  too — margin/padding wouldn't). The host is on `<html>`, so it stays in the gap. Cleared when
+  collapsed or off a surface. `BAR_HEIGHT` (content.js) must stay in sync with `.gbl-bar` height +
+  border in navbar.styles.js.
 
 ## Storage schema (`store.js`)
 

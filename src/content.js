@@ -13,10 +13,24 @@
   const HOST_ID = "graptilubear-navbar-host";
   const COLLAPSE_KEY = "gbl.collapsed";
   const SCRAPE_RETRY_MAX = 15; // ~10s of 0.7s ticks while links are still unresolved
+  const BAR_HEIGHT = 34; // .gbl-bar 32px + 2px border — keep in sync with navbar.styles.js
 
   let collapsed = false;
   let lastUrl = null;
   let attempts = 0;
+  let pushedPx = -1;
+
+  // Reserve space at the top by translating <body> down. A transform makes <body> the
+  // containing block for the site's own position:fixed headers, so they move down with
+  // everything else (a plain margin/padding would leave them overlapping). The navbar host is
+  // appended to <html>, not <body>, so it stays pinned at the very top in the reserved gap.
+  // Verified on GitHub (normal flow) and Linear (app shell, dropdowns stay aligned).
+  function applyPush(px) {
+    if (pushedPx === px) return;
+    pushedPx = px;
+    const b = document.body;
+    if (b) b.style.transform = px ? `translateY(${px}px)` : "";
+  }
 
   // --- scraping (see CLAUDE.md "Fragile selectors") ------------------------------------
 
@@ -224,17 +238,21 @@
     hdot.className = "dot";
     handle.appendChild(hdot);
     handle.appendChild(document.createTextNode(current ? current.label : "graptilubear"));
+
+    applyPush(collapsed ? 0 : BAR_HEIGHT);
   }
 
   function removeHost() {
     const host = document.getElementById(HOST_ID);
     if (host) host.remove();
+    applyPush(0); // not on a surface — release the reserved space
   }
 
   function setCollapsed(v) {
     collapsed = v;
     const host = document.getElementById(HOST_ID);
     if (host && host.__gblWrap) host.__gblWrap.classList.toggle("collapsed", collapsed);
+    applyPush(collapsed ? 0 : BAR_HEIGHT); // collapsed = small handle only, reclaim the space
     try {
       chrome.storage.local.set({ [COLLAPSE_KEY]: v });
     } catch (e) {}
