@@ -55,18 +55,19 @@
   }
 
   function scrapeLinearIssue() {
-    const obs = {};
-    // The PR attachment is a /review/ anchor whose subtree text contains a "#<number>".
-    // This disambiguates it from the workspace-nav list of all reviews.
+    // An issue can link MANY PRs (epic-style — e.g. ABC-123 links 13). Each attachment is a
+    // /review/ anchor whose subtree text shows a PR "#<n>". If there's exactly ONE it's
+    // unambiguous and safe to remember; if several, stay quiet and let memory recency (the
+    // most-recently-visited PR/review for this issue) drive the buttons — writing them all
+    // would balloon the record and clobber that recency signal.
+    const byHash = new Map();
     for (const a of document.querySelectorAll('a[href*="/review/"]')) {
       if (!/#\d{2,}/.test(a.textContent)) continue;
       const p = GBL.parse(GBL.absolute(a.getAttribute("href")));
-      if (p && p.surface === "linearReview") {
-        obs.linearReview = { workspace: p.workspace, slug: p.slug, hash: p.hash };
-        break;
-      }
+      if (p && p.surface === "linearReview")
+        byHash.set(p.hash, { workspace: p.workspace, slug: p.slug, hash: p.hash });
     }
-    return obs;
+    return byHash.size === 1 ? { linearReview: [...byHash.values()][0] } : {};
   }
 
   // buildObservation: the self identifiers from the URL + whatever we can scrape now.

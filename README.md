@@ -40,6 +40,12 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture and the (fragile) scraping 
 After editing the code: hit the **reload** button on the extension card in `chrome://extensions`
 (reloads the service worker), then reload the page tab (to re-inject the content script).
 
+## Toolbar popup
+
+Click the extension's toolbar icon for a small panel showing how many work items are
+remembered, a **Reload bar** button (re-renders the bar on the active tab), and **Clear
+memory** (forgets all learned Linear ↔ PR links — they re-learn as you browse).
+
 ## Status
 
 Work in progress. No build step — it's plain vanilla JS, loaded directly.

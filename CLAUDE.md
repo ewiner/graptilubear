@@ -64,10 +64,11 @@ These were verified live (logged in) on PR #456 / ABC-123. If a button stops res
   whole stack, which is noisy).
 - **Linear review page** — GitHub PR: `a[href*="github.com"][href*="/pull/"]`. Issue breadcrumb:
   `a[href*="/issue/"]`.
-- **Linear issue page** — issue id from URL / `document.title`. Review link: the PR attachment is an
-  `a[href*="/review/"]` **whose subtree text contains a `#<number>`** (use that to disambiguate from
-  the workspace-nav list of all reviews). It does NOT expose org/repo — GitHub/Graphite resolve via
-  memory here.
+- **Linear issue page** — issue id from URL / `document.title`. PR attachments are `a[href*="/review/"]`
+  anchors whose subtree text shows a PR `#<number>`. ⚠ An issue can link **many** PRs (ABC-123 links
+  13), so we only remember the review when there is **exactly one** attachment; with several we write
+  nothing and let memory recency pick the most-recently-visited PR. The issue page never exposes
+  org/repo, so GitHub/Graphite always resolve via memory here.
 - **Graphite page** — triple from URL only (DOM not inspected; the dev tooling blocks the domain).
   Linear edges rely on memory.
 

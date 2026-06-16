@@ -25,7 +25,8 @@
     }
   ],
   "action": {
-    "default_title": "graptilubear"
+    "default_title": "graptilubear",
+    "default_popup": "src/popup.html"
   },
   "icons": {
     "16": "icons/icon16.png",

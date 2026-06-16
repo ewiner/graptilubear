@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        width: 240px;
+        margin: 0;
+        padding: 12px;
+        background: #16181d;
+        color: #c9d1d9;
+        font: 12px/1.4 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      h1 {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        margin: 0 0 8px;
+        color: #8b949e;
+        text-transform: lowercase;
+      }
+      .count { font-size: 22px; font-weight: 700; color: #fff; }
+      .count small { font-size: 11px; font-weight: 500; color: #8b949e; }
+      .row { display: flex; gap: 6px; margin-top: 12px; }
+      button {
+        flex: 1;
+        background: #21262d;
+        color: #c9d1d9;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        padding: 6px 8px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover { background: #2a3038; }
+      button.danger:hover { background: #3d1d1d; border-color: #6b2a2a; color: #fff; }
+      .note { margin-top: 10px; color: #6b727c; font-size: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>graptilubear</h1>
+    <div class="count"><span id="count">–</span> <small>work items remembered</small></div>
+    <div class="row">
+      <button id="reload">Reload bar</button>
+      <button id="clear" class="danger">Clear memory</button>
+    </div>
+    <div class="note">Clearing forgets all learned Linear ↔ PR links. They re-learn as you browse.</div>
+    <script src="popup.js"></script>
+  </body>
+</html>
