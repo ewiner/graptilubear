@@ -1,9 +1,11 @@
-// background.js — service worker. Owns SPA route detection: GitHub (Turbo), Linear, and
-// Graphite mutate the URL without a full navigation, so the one-shot content script needs a
-// nudge to re-render. On any in-page navigation to one of our origins, ping the tab's
-// content script to re-run its tick().
-//
-// (Persistent association memory is layered on in store.js — see the `observe` handler.)
+// background.js — service worker. Two jobs:
+//  1. SPA route detection: GitHub (Turbo), Linear, and Graphite mutate the URL without a full
+//     navigation, so the one-shot content script needs a nudge to re-render.
+//  2. Serialize writes to the persistent association map (store.js) so concurrent tabs don't
+//     clobber each other.
+// The SW is ephemeral — it holds no state; everything lives in chrome.storage.local.
+
+import { handleObserve } from "./store.js";
 
 const ORIGIN_FILTER = {
   url: [
@@ -21,19 +23,20 @@ function pingTab(details) {
 chrome.webNavigation.onHistoryStateUpdated.addListener(pingTab, ORIGIN_FILTER);
 chrome.webNavigation.onCommitted.addListener(pingTab, ORIGIN_FILTER);
 
-// Without persistence yet, turn an observation straight into a record shape so the content
-// script's resolution path works the same as it will once memory lands.
-function observationToRecord(obs) {
-  return {
-    linearIssue: obs.linearIssue || null,
-    linearReviews: obs.linearReview ? [obs.linearReview] : [],
-    prs: obs.pr ? [obs.pr] : [],
-  };
-}
+// Serialize all map writes through one promise chain (chrome.storage has no transactions, and
+// two tabs can fire `observe` at once). Each observe does read → merge → write atomically
+// relative to the others, then replies with the merged canonical record.
+let writeChain = Promise.resolve();
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "observe") {
-    sendResponse({ record: observationToRecord(msg.observation || {}) });
-    return false;
+    writeChain = writeChain
+      .then(() => handleObserve(msg.observation || {}))
+      .then((record) => sendResponse({ record }))
+      .catch((err) => {
+        console.error("[graptilubear] observe failed:", err);
+        sendResponse({ record: null });
+      });
+    return true; // keep the message channel open for the async sendResponse
   }
 });
