@@ -28,14 +28,22 @@ chrome.webNavigation.onCommitted.addListener(pingTab, ORIGIN_FILTER);
 // relative to the others, then replies with the merged canonical record.
 let writeChain = Promise.resolve();
 
+// sendResponse throws if the tab navigated away and closed the channel. Swallow that so the
+// write chain always resolves and the next observe still runs.
+const safeSend = (sendResponse, payload) => {
+  try {
+    sendResponse(payload);
+  } catch (e) {}
+};
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "observe") {
     writeChain = writeChain
       .then(() => handleObserve(msg.observation || {}))
-      .then((record) => sendResponse({ record }))
+      .then((record) => safeSend(sendResponse, { record }))
       .catch((err) => {
         console.error("[graptilubear] observe failed:", err);
-        sendResponse({ record: null });
+        safeSend(sendResponse, { record: null });
       });
     return true; // keep the message channel open for the async sendResponse
   }
