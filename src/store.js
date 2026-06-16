@@ -46,16 +46,29 @@ function indexLookup(db, obs) {
 const samePr = (a, b) => a.org === b.org && a.repo === b.repo && a.prNumber === b.prNumber;
 const sameReview = (a, b) => a.workspace === b.workspace && a.hash === b.hash;
 
+// Arrays are kept in least-recently-observed → most-recently-observed order: the just-seen
+// entry is moved to the end. The weak surfaces (issue page) resolve to the last entry, so this
+// makes them follow the PR/review you most recently looked at when an item has several.
 function addPr(item, pr) {
-  const e = item.prs.find((p) => samePr(p, pr));
-  if (!e) item.prs.push({ org: pr.org, repo: pr.repo, prNumber: pr.prNumber, graphiteSlug: pr.graphiteSlug || null });
-  else if (pr.graphiteSlug && !e.graphiteSlug) e.graphiteSlug = pr.graphiteSlug;
+  const i = item.prs.findIndex((p) => samePr(p, pr));
+  let e;
+  if (i === -1) e = { org: pr.org, repo: pr.repo, prNumber: pr.prNumber, graphiteSlug: pr.graphiteSlug || null };
+  else {
+    e = item.prs.splice(i, 1)[0];
+    if (pr.graphiteSlug && !e.graphiteSlug) e.graphiteSlug = pr.graphiteSlug;
+  }
+  item.prs.push(e);
 }
 
 function addReview(item, lr) {
-  const e = item.linearReviews.find((r) => sameReview(r, lr));
-  if (!e) item.linearReviews.push({ workspace: lr.workspace, slug: lr.slug, hash: lr.hash });
-  else if (lr.slug && !e.slug) e.slug = lr.slug;
+  const i = item.linearReviews.findIndex((r) => sameReview(r, lr));
+  let e;
+  if (i === -1) e = { workspace: lr.workspace, slug: lr.slug, hash: lr.hash };
+  else {
+    e = item.linearReviews.splice(i, 1)[0];
+    if (lr.slug && !e.slug) e.slug = lr.slug;
+  }
+  item.linearReviews.push(e);
 }
 
 function setIssue(item, li) {
