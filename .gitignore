@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Packaged builds (for loading / distribution)
+*.zip
+
+# In case tooling is ever added
+node_modules/
+*.log

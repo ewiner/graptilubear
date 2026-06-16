@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "graptilubear",
+  "version": "0.1.0",
+  "description": "Color-coded sticky navbar to jump between the GitHub PR, Graphite PR, Linear Issue, and Linear Review pages for one piece of work.",
+  "permissions": ["storage", "webNavigation"],
+  "host_permissions": [
+    "https://github.com/*",
+    "https://app.graphite.com/*",
+    "https://linear.app/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*",
+        "https://app.graphite.com/*",
+        "https://linear.app/*"
+      ],
+      "js": ["src/surfaces.js", "src/navbar.styles.js", "src/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "graptilubear"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
