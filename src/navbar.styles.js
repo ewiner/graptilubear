@@ -55,19 +55,6 @@
     flex-shrink: 0;
   }
 
-  .prnum {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 6px;
-    padding: 2px 8px;
-    letter-spacing: 0.02em;
-    margin-right: 2px;
-    flex-shrink: 0;
-  }
-
   .badge {
     font-size: 11px;
     font-weight: 700;

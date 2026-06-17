@@ -84,7 +84,8 @@ These were verified live (logged in) on PR #456 / ABC-123. If a button stops res
 ## Surface accent colors
 
 GitHub `#2da44e` (green) · Graphite `#ff5f3a` · Linear Issue `#5e6ad2` · Linear Review `#26b5a8`.
-The resolved PR number (when known) renders as a `.prnum` pill right after the brand.
+A `.badge` pill right after the brand shows the resolved identifiers: `ISSUE-ID → #PR` when
+both are known, or just the issue id / just `#PR` when only one is.
 
 ## Reload after edits
 

@@ -215,16 +215,13 @@
     brand.textContent = "graptilubear";
     bar.appendChild(brand);
 
-    if (linearIssue && linearIssue.issueId && prNumber) {
+    const issueId = linearIssue && linearIssue.issueId;
+    if (issueId || prNumber) {
       const badge = document.createElement("span");
       badge.className = "badge";
-      badge.textContent = `${linearIssue.issueId} → #${prNumber}`;
+      badge.textContent =
+        issueId && prNumber ? `${issueId} → #${prNumber}` : issueId || `#${prNumber}`;
       bar.appendChild(badge);
-    } else if (prNumber) {
-      const pn = document.createElement("span");
-      pn.className = "prnum";
-      pn.textContent = "#" + prNumber;
-      bar.appendChild(pn);
     }
 
     for (const s of GBL.SURFACES) {
