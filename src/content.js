@@ -198,16 +198,10 @@
     dot.className = "dot";
     el.appendChild(dot);
     el.appendChild(document.createTextNode(surface.label));
-    if (current) {
-      const here = document.createElement("span");
-      here.className = "here";
-      here.textContent = "you are here";
-      el.appendChild(here);
-    }
     return el;
   }
 
-  function renderBar(parsed, links, prNumber) {
+  function renderBar(parsed, links, prNumber, linearIssue) {
     const host = ensureHost();
     const bar = host.__gblBar;
     const handle = host.__gblHandle;
@@ -221,7 +215,12 @@
     brand.textContent = "graptilubear";
     bar.appendChild(brand);
 
-    if (prNumber) {
+    if (linearIssue && linearIssue.issueId && prNumber) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = `${linearIssue.issueId} → #${prNumber}`;
+      bar.appendChild(badge);
+    } else if (prNumber) {
       const pn = document.createElement("span");
       pn.className = "prnum";
       pn.textContent = "#" + prNumber;
@@ -299,7 +298,7 @@
     if (links.github && links.graphite && links.linearIssue && links.linearReview) {
       attempts = SCRAPE_RETRY_MAX;
     }
-    renderBar(parsed, links, pr ? pr.prNumber : null);
+    renderBar(parsed, links, pr ? pr.prNumber : null, record && record.linearIssue);
   }
 
   // --- bootstrap ------------------------------------------------------------------------

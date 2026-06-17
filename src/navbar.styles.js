@@ -68,6 +68,19 @@
     flex-shrink: 0;
   }
 
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 3px 10px;
+    letter-spacing: 0.01em;
+    margin-right: 2px;
+    flex-shrink: 0;
+  }
+
   .seg {
     display: inline-flex;
     align-items: center;
@@ -100,17 +113,6 @@
   .seg.cur .dot {
     background: #fff;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
-  }
-  .seg.cur .here {
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 0.9;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 999px;
-    padding: 1px 5px;
-    margin-left: 2px;
   }
 
   .seg.disabled {
