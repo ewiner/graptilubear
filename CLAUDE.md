@@ -43,10 +43,26 @@ Strip query/hash before parsing. The Linear-review hash is the trailing `[0-9a-f
   rule inside the shadow tree is immune. `.gbl-wrap *{font-family:inherit}` makes the `<button>`
   match too (buttons don't inherit font by default).
 - **Page push:** space is reserved by `transform: translateY(BAR_HEIGHT)` on `<body>` (a transform
-  makes body the containing block for the site's own `position:fixed` headers, so they move down
-  too — margin/padding wouldn't). The host is on `<html>`, so it stays in the gap. Cleared when
-  collapsed or off a surface. `BAR_HEIGHT` (content.js) must stay in sync with `.gbl-bar` height +
-  border in navbar.styles.js.
+  makes body the containing block for the site's own `position:fixed`/`sticky` headers AND panes,
+  so they move down too — margin/padding wouldn't, and **Linear's entire app shell, including the
+  fixed left navbar, is `position:fixed`, so only a transform shifts it**; a `padding-top` push left
+  the navbar pinned at viewport top, obscured under the bar ~half the time depending on a load
+  race). The host is on `<html>`, so it stays in the gap. `applyPush` reapplies if Linear's SPA
+  wipes the inline transform (self-heal). Cleared when collapsed or off a surface. `BAR_HEIGHT`
+  (content.js) must stay in sync with `.gbl-bar` height + border in navbar.styles.js.
+- **Overlay fix (the transform's side effect — `applyOverlayFix`):** the body transform desyncs
+  every JS-positioned overlay by exactly `BAR_HEIGHT`, but in **opposite directions**, so the
+  correction is per-mechanism. One **page-level** `<style>` (the shadow style can't reach the light
+  DOM), toggled in lockstep with the push:
+  - **GitHub** tooltips/menus are `[popover]` elements promoted to the **top layer** (containing
+    block = viewport), so they ignore the transform while their anchors ride down with it → popover
+    lands `BAR_HEIGHT` too **high** (on the button). Fix: `[popover]:popover-open{margin-top:BAR}`.
+  - **Linear** tooltips/hover-cards are Popper portals (`[data-popper-placement]`), `position:fixed`
+    *inside* the transformed body → shifted `BAR_HEIGHT` too **low** (over the cursor). Fix:
+    `[data-popper-placement]{translate:0 -BAR}`. Popper drives them with an inline `transform` that
+    `margin-top` can't budge; the separate **`translate`** property composes with it. Vertical only.
+  - Each selector is inert on the other site (GitHub has no Popper portals; Linear emits no
+    `[popover]`), so the single rule set is safe on every surface.
 
 ## Storage schema (`store.js`)
 
