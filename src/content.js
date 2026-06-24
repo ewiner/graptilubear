@@ -20,16 +20,59 @@
   let attempts = 0;
   let pushedPx = -1;
 
-  // Reserve space at the top by translating <body> down. A transform makes <body> the
-  // containing block for the site's own position:fixed headers, so they move down with
-  // everything else (a plain margin/padding would leave them overlapping). The navbar host is
-  // appended to <html>, not <body>, so it stays pinned at the very top in the reserved gap.
-  // Verified on GitHub (normal flow) and Linear (app shell, dropdowns stay aligned).
+  // Reserve BAR_HEIGHT at the top by translating <body> down. A transform makes <body> the
+  // containing block for the site's own position:fixed / sticky headers and panes, so they ride
+  // down with the page (margin/padding leaves them overlapping; on Linear, whose whole app shell
+  // — including the fixed left navbar — is position:fixed, only a transform on <body> shifts it).
+  // The navbar host is on <html>, not <body>, so it stays pinned in the reserved gap. Side effect:
+  // the transform desyncs the sites' JS-positioned overlays — corrected by applyOverlayFix. We
+  // reapply if the page (Linear's SPA) wipes our inline transform, so the push self-heals.
   function applyPush(px) {
-    if (pushedPx === px) return;
-    pushedPx = px;
+    applyOverlayFix(px);
     const b = document.body;
-    if (b) b.style.transform = px ? `translateY(${px}px)` : "";
+    if (!b) return;
+    const want = px ? `translateY(${px}px)` : "";
+    if (b.style.transform === want && pushedPx === px) return;
+    b.style.transform = want;
+    pushedPx = px;
+  }
+
+  // The body transform desyncs every JS-positioned overlay by exactly BAR_HEIGHT, but in opposite
+  // directions depending on how the overlay is positioned — so the correction is per-mechanism.
+  // A PAGE-level stylesheet is required either way (the shadow-root style can't reach the light
+  // DOM); it's toggled in lockstep with the push and only present while the transform is applied.
+  //
+  //  • GitHub tooltips/menus are `[popover]` elements promoted to the TOP LAYER, whose containing
+  //    block is the viewport — so they IGNORE the transform while their anchors (inside <body>)
+  //    ride down with it, landing the popover BAR_HEIGHT too HIGH (on top of the button). Push it
+  //    back down with `margin-top`.
+  //
+  //  • Linear tooltips/hover-cards are Popper portals (`[data-popper-placement]`) — position:fixed
+  //    inside the transformed <body>, so they get shifted BAR_HEIGHT too LOW (over the cursor).
+  //    Pull them back up. Popper drives them with an inline `transform`, which `margin-top` can't
+  //    move; the separate `translate` property composes with that transform instead of clobbering
+  //    it. Vertical only — the desync is purely the translateY of the push.
+  //
+  // Each selector is inert on the other site (GitHub has no Popper portals; Linear emits no
+  // `[popover]`), so the one rule set is safe everywhere.
+  let overlayFixEl = null;
+  function applyOverlayFix(px) {
+    if (!px) {
+      if (overlayFixEl) {
+        overlayFixEl.remove();
+        overlayFixEl = null;
+      }
+      return;
+    }
+    if (!overlayFixEl || !overlayFixEl.isConnected) {
+      overlayFixEl = document.createElement("style");
+      overlayFixEl.id = "gbl-overlay-fix";
+      (document.head || document.documentElement).appendChild(overlayFixEl);
+    }
+    const css =
+      `[popover]:popover-open{margin-top:${px}px !important}` +
+      `[data-popper-placement]{translate:0 -${px}px !important}`;
+    if (overlayFixEl.textContent !== css) overlayFixEl.textContent = css;
   }
 
   // --- scraping (see CLAUDE.md "Fragile selectors") ------------------------------------
