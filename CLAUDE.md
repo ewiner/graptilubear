@@ -94,8 +94,21 @@ These were verified live (logged in) on PR #456 / ABC-123. If a button stops res
   13), so we only remember the review when there is **exactly one** attachment; with several we write
   nothing and let memory recency pick the most-recently-visited PR. The issue page never exposes
   org/repo, so GitHub/Graphite always resolve via memory here.
-- **Graphite page** — triple from URL only (DOM not inspected; the dev tooling blocks the domain).
-  Linear edges rely on memory.
+- **Graphite page** — org/repo/PR from the URL. Linear edges are scraped from
+  `a[href*="linear.app"]` **document-wide**: Graphite's containers are hashed CSS modules
+  (`Description_description__8QGFC`) that churn on deploy, so there is nothing durable to scope to.
+  Noise is filtered by ranking instead (`pickGraphiteIssue`), and a tier only wins if every
+  candidate in it agrees on one issue id — otherwise we write nothing and let memory decide:
+  1. **The Linear integration chip** — text is `<ISSUE-ID> <title>`. Requiring the title is the
+     whole trick: a bot citation is title-only, and an auto-linked inline mention is a bare id,
+     and both point at related-but-different issues (elevate#10376 cites SCAPP-697 in a comment;
+     #10377 mentions SCAPP-1345/1291 alongside its real issue SCAPP-1346).
+  2. Issue id present in `document.title` (PR titles conventionally end `(ISSUE-ID)`).
+  3. Every Linear-issue link on the page names the same id.
+  Reviews: taken only when there is exactly **one** distinct `/review/` hash.
+  ⚠ **Graphite renders nothing while the tab is hidden** — a background-opened tab has an empty DOM
+  and would burn its whole `SCRAPE_RETRY_MAX` budget before the user ever looks, so `content.js`
+  resets `attempts` on `visibilitychange`.
 
 ## Surface accent colors
 

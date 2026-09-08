@@ -127,12 +127,59 @@
     return byHash.size === 1 ? { linearReview: [...byHash.values()][0] } : {};
   }
 
+  // Graphite renders the PR description AND the discussion (including Linear's own integration
+  // comment) client-side, so the Linear edges are on the page — but so is noise: any comment may
+  // mention an unrelated issue (a bot cited SCAPP-697 on a PR whose issue is SCAPP-1323). We can't
+  // scope to the description/comment containers the way we do on GitHub — Graphite's classes are
+  // hashed CSS modules (`Description_description__8QGFC`) that churn on deploy — so instead we
+  // collect every candidate and rank them by class-free signals, staying quiet when none of them
+  // picks a winner (the same 1:many guard scrapeLinearIssue uses).
+  function scrapeGraphite() {
+    const obs = {};
+    const issues = [];
+    const reviews = new Map();
+    for (const a of document.querySelectorAll('a[href*="linear.app"]')) {
+      const p = GBL.parse(GBL.absolute(a.getAttribute("href")));
+      if (!p) continue;
+      if (p.surface === "linearReview") {
+        reviews.set(p.hash, { workspace: p.workspace, slug: p.slug, hash: p.hash });
+      } else if (p.surface === "linearIssue") {
+        // Linear's integration comment renders the PR's issue as a chip captioned with the id AND
+        // its title ("SCAPP-1323 Upward KYC BE"). Requiring the title is what separates it from the
+        // two weaker forms: a bot citation (title only, e.g. "Card Optimization: GET…") and an
+        // inline mention Linear auto-links to a bare id ("SCAPP-1345"), both of which point at
+        // related-but-different issues. Verified on elevate#10376 and #10377.
+        const chip = new RegExp("^" + p.issueId + "\\s+\\S", "i").test((a.textContent || "").trim());
+        issues.push({ workspace: p.workspace, issueId: p.issueId, slug: p.slug || null, chip });
+      }
+    }
+    if (reviews.size === 1) obs.linearReview = [...reviews.values()][0];
+    const issue = pickGraphiteIssue(issues);
+    if (issue) obs.linearIssue = issue;
+    return obs;
+  }
+
+  // Rank the Linear-issue candidates found on a Graphite page. Each tier must agree on a single
+  // issue id to win; within a tier we prefer a link that carries the slug (nicer URL to rebuild).
+  function pickGraphiteIssue(cands) {
+    if (!cands.length) return null;
+    const oneId = (l) => l.length && l.every((c) => c.issueId === l[0].issueId);
+    const best = (l) => l.find((c) => c.slug) || l[0];
+    const chips = cands.filter((c) => c.chip);
+    if (oneId(chips)) return best(chips); // 1. Linear's own integration chip
+    const title = (document.title || "").toUpperCase();
+    const titled = cands.filter((c) => title.includes(c.issueId));
+    if (oneId(titled)) return best(titled); // 2. id in the PR title, e.g. "…(SCAPP-1323) #10376"
+    if (oneId(cands)) return best(cands); // 3. every link on the page agrees
+    return null; // ambiguous — write nothing, let memory decide
+  }
+
   // buildObservation: the self identifiers from the URL + whatever we can scrape now.
   function buildObservation(parsed) {
     const obs = {};
     if (parsed.surface === "github" || parsed.surface === "graphite") {
       obs.pr = { org: parsed.org, repo: parsed.repo, prNumber: parsed.prNumber };
-      if (parsed.surface === "github") Object.assign(obs, scrapeGithub());
+      Object.assign(obs, parsed.surface === "github" ? scrapeGithub() : scrapeGraphite());
     } else if (parsed.surface === "linearReview") {
       obs.linearReview = { workspace: parsed.workspace, slug: parsed.slug, hash: parsed.hash };
       Object.assign(obs, scrapeLinearReview());
@@ -357,6 +404,14 @@
     });
     setInterval(tick, 700);
     window.addEventListener("pageshow", tick);
+    // Graphite renders nothing while the tab is hidden (React defers the whole PR view), so a
+    // background-opened tab burns its whole SCRAPE_RETRY_MAX budget on an empty DOM and has given
+    // up by the time the user looks at it. Becoming visible earns a fresh budget.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) return;
+      attempts = 0;
+      tick();
+    });
   }
 
   start();
