@@ -356,6 +356,8 @@
   async function tick() {
     const url = location.href;
     const parsed = GBL.parse(url);
+    // Every tick, ahead of the early returns below, so it self-heals if the site rewrites <head>.
+    if (GBL.applyFavicon) GBL.applyFavicon(parsed ? parsed.surface : null);
     if (!parsed) {
       removeHost();
       lastUrl = null;

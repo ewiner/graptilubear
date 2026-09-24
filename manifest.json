@@ -20,7 +20,7 @@
         "https://app.graphite.com/*",
         "https://linear.app/*"
       ],
-      "js": ["src/surfaces.js", "src/navbar.styles.js", "src/content.js"],
+      "js": ["src/surfaces.js", "src/navbar.styles.js", "src/favicon.js", "src/content.js"],
       "run_at": "document_idle"
     }
   ],

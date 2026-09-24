@@ -35,7 +35,7 @@ Strip query/hash before parsing. The Linear-review hash is the trailing `[0-9a-f
   known host-element id.
 - Service worker is **ephemeral** — keep no state in SW memory; the map lives only in
   `chrome.storage.local`. Listeners re-register at SW top level on wake.
-- **File worlds:** `surfaces.js` + `navbar.styles.js` + `content.js` are classic content scripts
+- **File worlds:** `surfaces.js` + `navbar.styles.js` + `favicon.js` + `content.js` are classic content scripts
   (shared isolated-world scope; they attach to a `GBL` global, no `import`/`export`). `store.js` is
   an ES module imported by `background.js` (`"type":"module"`). Don't mix the two worlds in one file.
 - **Font goes on `.gbl-wrap` (a shadow element), NEVER on `:host`.** The host is in the page's light
@@ -63,6 +63,13 @@ Strip query/hash before parsing. The Linear-review hash is the trailing `[0-9a-f
     `margin-top` can't budge; the separate **`translate`** property composes with it. Vertical only.
   - Each selector is inert on the other site (GitHub has no Popper portals; Linear emits no
     `[popover]`), so the single rule set is safe on every surface.
+- **Favicon (`favicon.js`):** Graphite / Linear Issue / Linear Review tabs carry the same PR
+  title and near-identical black-and-white favicons, so we swap in copies of each site's own
+  favicon SVG with the background square filled in the surface accent. **GitHub is left alone** —
+  its PR favicon encodes CI status. The site's `rel=icon` links are disabled (rel renamed, original
+  kept in `data-gbl-rel`) rather than outranked, because browsers pick among icons by size/type, not
+  order; `applyFavicon` runs at the top of every `tick()` so it self-heals and restores the site's
+  links when leaving a surface.
 
 ## Storage schema (`store.js`)
 
