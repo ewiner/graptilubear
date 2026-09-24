@@ -12,3 +12,6 @@ Thumbs.db
 # In case tooling is ever added
 node_modules/
 *.log
+
+# Packaged builds
+dist/

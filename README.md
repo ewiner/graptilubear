@@ -1,6 +1,6 @@
 # graptilubear
 
-A personal Chrome extension (Manifest V3) that adds a **sticky, color-coded top navbar**
+A Chrome extension (Manifest V3) that adds a **sticky, color-coded top navbar**
 to the four web surfaces involved in reviewing one piece of work — so you always know
 *which* tool you're looking at and can jump to the corresponding page on the others in one
 click.
@@ -9,8 +9,8 @@ The four surfaces:
 
 | Surface | URL shape | Accent |
 |---|---|---|
-| **GitHub PR** | `github.com/{org}/{repo}/pull/{prNumber}` | charcoal |
-| **Graphite PR** | `app.graphite.com/github/pr/{org}/{repo}/{prNumber}/{slug}` | coral |
+| **GitHub PR** | `github.com/{org}/{repo}/pull/{prNumber}` | green |
+| **Graphite PR** | `app.graphite.com/github/pr/{org}/{repo}/{prNumber}/{slug}` | orange |
 | **Linear Issue** | `linear.app/{workspace}/issue/{ISSUE-ID}/{slug}` | indigo |
 | **Linear Review** | `linear.app/{workspace}/review/{slug}-{hash}/review` | teal |
 
@@ -50,6 +50,17 @@ Click the extension's toolbar icon for a small panel showing how many work items
 remembered, a **Reload bar** button (re-renders the bar on the active tab), and **Clear
 memory** (forgets all learned Linear ↔ PR links — they re-learn as you browse).
 
-## Status
+## Publishing to the Chrome Web Store
 
-Work in progress. No build step — it's plain vanilla JS, loaded directly.
+No build step — it's plain vanilla JS. To release:
+
+1. Bump `version` in `manifest.json` (the store rejects re-uploads of an existing version).
+2. Run `scripts/package.sh` → `dist/graptilubear-<version>.zip` (manifest, `src/`, `icons/` only).
+3. Upload the zip in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+
+Listing copy, permission justifications, and privacy answers are in
+[store/LISTING.md](store/LISTING.md). The privacy policy is [PRIVACY.md](PRIVACY.md).
+
+## License
+
+[MIT](LICENSE)

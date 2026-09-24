@@ -1,0 +1,323 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="../src/surfaces.js"></script>
+<script src="../src/navbar.styles.js"></script>
+<style>
+  :root {
+    --ink: #0f1115; --panel: #16181d; --line: #262a32; --txt: #e6e8eb; --mute: #8b929c;
+    --li: #5e6ad2; --gh: #2da44e; --gr: #ff5f3a; --lr: #26b5a8;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ink); color: var(--txt); font-family: var(--sans); }
+  .canvas { position: relative; overflow: hidden; background:
+      radial-gradient(900px 500px at 100% 0%, rgba(94,106,210,.18), transparent 60%),
+      radial-gradient(700px 500px at 0% 100%, rgba(255,95,58,.12), transparent 60%), var(--ink); }
+  .stripe { position: absolute; left: 0; right: 0; top: 0; height: 6px; display: flex; }
+  .stripe i { flex: 1; } .stripe i:nth-child(1){background:var(--li)} .stripe i:nth-child(2){background:var(--gh)}
+  .stripe i:nth-child(3){background:var(--gr)} .stripe i:nth-child(4){background:var(--lr)}
+  h1 { font-size: 50px; line-height: 1.05; letter-spacing: -0.02em; margin: 0; font-weight: 800; }
+  h1 em { font-style: normal; }
+  .sub { font-size: 21px; line-height: 1.4; color: var(--mute); margin: 14px 0 0; max-width: 820px; }
+  .kicker { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 700; color: var(--mute); letter-spacing: .02em; margin-bottom: 18px; }
+  .kicker img { width: 34px; height: 34px; }
+
+  /* ---- browser window mock ---- */
+  .win { position: absolute; background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); }
+  .tabs { height: 42px; background: #dee1e6; display: flex; align-items: flex-end; padding: 0 10px 0 84px; gap: 2px; position: relative; }
+  .tabs .lights { position: absolute; left: 16px; top: 15px; display: flex; gap: 8px; }
+  .tabs .lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+  .tabs .lights i:nth-child(2){background:#febc2e} .tabs .lights i:nth-child(3){background:#28c840}
+  .tab { width: 200px; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 12.5px; color: #3c4043;
+    border-radius: 9px 9px 0 0; white-space: nowrap; overflow: hidden; }
+  .tab.on { background: #fff; color: #202124; }
+  .tab img, .tab .fav { width: 16px; height: 16px; flex-shrink: 0; }
+  .tab span { overflow: hidden; text-overflow: ellipsis; }
+  .omni { height: 40px; background: #fff; display: flex; align-items: center; padding: 0 14px; gap: 12px; border-bottom: 1px solid #e3e3e3; }
+  .omni .url { flex: 1; height: 28px; border-radius: 14px; background: #f1f3f4; font-size: 13px; color: #5f6368; display: flex; align-items: center; padding: 0 14px; }
+  .omni .url b { color: #202124; font-weight: 400; }
+  .omni .nav { color: #9aa0a6; font-size: 16px; letter-spacing: 10px; }
+  .page { position: relative; background: #fff; color: #1f2328; font-size: 14px; }
+
+  /* ---- generic page skeleton pieces ---- */
+  .sk { background: #eceef1; border-radius: 4px; height: 10px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 600; }
+
+  /* ---- slide cards ---- */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .label { font-size: 14px; font-weight: 700; color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const S = new URLSearchParams(location.search).get("s") || "1";
+const ICON = "../icons/icon128.png";
+const COL = { linearIssue: "#5e6ad2", github: "#2da44e", graphite: "#ff5f3a", linearReview: "#26b5a8" };
+const ISSUE = "ENG-482", PR = 1287, TITLE = "Add dark mode to settings page";
+
+// ---- real navbar: same DOM as content.js renderBar(), styled by the shipped GBL.STYLES ----
+function navbar(current, { disabled = [], collapsed = false, badge = `${ISSUE} → #${PR}` } = {}) {
+  const host = document.createElement("div");
+  const root = host.attachShadow({ mode: "open" });
+  const style = document.createElement("style");
+  // :host is position:fixed in the extension; make it flow inside the mock instead.
+  style.textContent = GBL.STYLES + ":host{position:relative!important;z-index:auto!important}.gbl-handle{position:absolute!important}";
+  root.appendChild(style);
+  const wrap = document.createElement("div");
+  wrap.className = "gbl-wrap" + (collapsed ? " collapsed" : "");
+  wrap.style.setProperty("--accent", COL[current]);
+  const bar = document.createElement("div"); bar.className = "gbl-bar";
+  bar.innerHTML = `<span class="brand">graptilubear</span>` + (badge ? `<span class="badge">${badge}</span>` : "");
+  for (const s of GBL.SURFACES) {
+    const cur = s.key === current, dis = disabled.includes(s.key);
+    const el = document.createElement(cur || dis ? "span" : "a");
+    el.className = "seg" + (cur ? " cur" : dis ? " disabled" : " link");
+    el.style.setProperty("--c", s.color);
+    el.innerHTML = `<span class="dot"></span>${s.label}`;
+    bar.appendChild(el);
+  }
+  bar.insertAdjacentHTML("beforeend", `<button class="collapse">×</button>`);
+  const handle = document.createElement("div"); handle.className = "gbl-handle";
+  handle.innerHTML = `<span class="dot"></span>${GBL.SURFACES.find(s => s.key === current).label}`;
+  wrap.append(bar, handle); root.appendChild(wrap);
+  return host;
+}
+
+// ---- favicons: the same recolored SVGs favicon.js injects (background square = {C}) ----
+const FAV = {
+  graphite: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" ry="3.2" fill="{C}"/><path fill-rule="evenodd" clip-rule="evenodd" d="M3.10115 3.1009L9.79325 1.3078L14.6923 6.2068L12.8991 12.8989L6.20695 14.692L1.30795 9.793L3.10115 3.1009ZM5.11335 12.9999L10.8869 12.9999L13.7736 7.9999L10.8869 2.9999L5.11335 2.9999L2.22665 7.9999L5.11335 12.9999ZM6.77378 3.42319L11.3505 4.64959L12.5769 9.22629L9.22638 12.5768L4.64968 11.3504L3.42328 6.77369L6.77378 3.42319Z" fill="white"/></svg>',
+  linear: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="{C}"/><path d="M2.147 9.383c-.027-.114.109-.186.192-.103l4.381 4.38c.083.083.011.219-.103.192a6.020 6.020 0 0 1-4.470-4.470ZM2 7.627a.12.12 0 0 0 .035.091l6.247 6.247a.12.12 0 0 0 .091.035q.428-.027.836-.111a.117.117 0 0 0 .057-.198L2.31 6.734a.117.117 0 0 0-.198.057 6 6 0 0 0-.11.836Zm.505-2.062a.12.12 0 0 0 .025.132l7.773 7.773a.12.12 0 0 0 .132.025q.322-.144.623-.322a.118.118 0 0 0 .022-.185L3.012 4.92a.118.118 0 0 0-.185.022q-.178.3-.322.623m1.014-1.396a.12.12 0 0 1-.005-.163 6.006 6.006 0 1 1 8.48 8.48.12.12 0 0 1-.163-.005z" fill="#FFF"/></svg>',
+  // Stand-in for GitHub's own PR favicon (left untouched by the extension): dark disc + CI check.
+  github: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.5" fill="#1f2328"/><circle cx="12.2" cy="12.2" r="3.8" fill="#fff"/><path d="M10.4 12.3l1.3 1.3 2.3-2.5" stroke="#1a7f37" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+const fav = (k, c) => "data:image/svg+xml," + encodeURIComponent(FAV[k].replace("{C}", c));
+const TABS = (colored) => [
+  { k: "linear", c: colored ? COL.linearIssue : "#222", t: `${ISSUE} ${TITLE}` },
+  { k: "linear", c: colored ? COL.linearReview : "#222", t: `${TITLE} (${ISSUE})` },
+  { k: "github", t: `${TITLE} (${ISSUE}) by sam-r · Pull Request #${PR}` },
+  { k: "graphite", c: colored ? COL.graphite : "#222", t: `${TITLE} (${ISSUE})` },
+];
+function tabstrip(colored, onIdx = 3) {
+  return `<div class="tabs"><div class="lights"><i></i><i></i><i></i></div>` +
+    TABS(colored).map((t, i) => `<div class="tab${i === onIdx ? " on" : ""}"><img src="${fav(t.k, t.c)}"><span>${t.t}</span></div>`).join("") + `</div>`;
+}
+
+// ---- page mocks (generic, fake data; no third-party logos) ----
+const avatar = (c, l) => `<span style="width:22px;height:22px;border-radius:50%;background:${c};color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${l}</span>`;
+const lines = (n, w = [92, 80, 86, 60]) => Array.from({ length: n }, (_, i) => `<div class="sk" style="width:${w[i % w.length]}%;margin:10px 0"></div>`).join("");
+
+const PAGES = {
+  graphite: () => `
+    <div style="display:flex;height:100%">
+      <div style="width:52px;border-right:1px solid #eee;background:#fafafa;padding-top:14px;display:flex;flex-direction:column;align-items:center;gap:18px">
+        ${[0,1,2,3].map(() => `<div style="width:18px;height:18px;border-radius:5px;background:#dcdfe4"></div>`).join("")}
+      </div>
+      <div style="flex:1;padding:26px 34px">
+        <div class="row" style="justify-content:flex-end;gap:8px;margin-bottom:22px">
+          <span class="pill" style="border:1px solid #d0d7de;color:#2f6feb">Review changes</span>
+          <span class="pill" style="background:#f0f1f3;color:#777">Merge when ready</span>
+        </div>
+        <div style="display:flex;gap:32px">
+          <div style="flex:1">
+            <div style="color:#6b7280;font-size:15px">acme/web #${PR}</div>
+            <div style="font-size:24px;font-weight:600;margin:6px 0 12px">${TITLE} (${ISSUE})</div>
+            <div class="row" style="font-size:13px;color:#555">${avatar("#8b5cf6","S")} Sam Rivera
+              <code style="background:#f3f4f6;border-radius:4px;padding:2px 6px">sam/eng-482-dark-mode</code> → main
+              <span style="color:#1a7f37">+214</span><span style="color:#cf222e">−37</span></div>
+            <div style="margin-top:24px">${lines(6)}</div>
+          </div>
+          <div style="width:300px">
+            <div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:10px" class="row"><span style="color:#1a7f37">●</span> Open</div>
+            <div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:10px"><div style="color:#2f6feb;font-weight:600">Waiting on reviewers</div>${lines(2,[90,60])}</div>
+            <div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px"><div style="font-weight:600">Checks</div>${lines(3,[70,85,50])}</div>
+          </div>
+        </div>
+      </div>
+    </div>`,
+  github: () => `
+    <div style="background:#f6f8fa;border-bottom:1px solid #d1d9e0;padding:14px 22px 0">
+      <div class="row" style="font-size:15px"><span style="width:26px;height:26px;border-radius:50%;background:#1f2328"></span> acme / <b>web</b></div>
+      <div class="row" style="gap:22px;margin-top:14px;font-size:14px;color:#59636e">
+        <span style="padding-bottom:10px">Code</span><span style="padding-bottom:10px">Issues</span>
+        <span style="padding-bottom:10px;border-bottom:2px solid #fd8c73;color:#1f2328;font-weight:600">Pull requests</span>
+        <span style="padding-bottom:10px">Actions</span><span style="padding-bottom:10px">Projects</span></div>
+    </div>
+    <div style="padding:22px 28px">
+      <div style="font-size:26px">${TITLE} (${ISSUE}) <span style="color:#59636e">#${PR}</span></div>
+      <div class="row" style="margin-top:10px;font-size:14px;color:#59636e"><span class="pill" style="background:#1f883d;color:#fff">Open</span> <b style="color:#1f2328">sam-r</b> wants to merge 3 commits into main</div>
+      <div style="margin-top:22px;border:1px solid #d1d9e0;border-radius:6px"><div style="background:#f6f8fa;padding:10px 14px;border-bottom:1px solid #d1d9e0" class="row">${avatar("#1f2328","L")} <b>linear</b> <span style="color:#59636e">bot commented</span></div>
+      <div style="padding:6px 14px 10px">${lines(3,[70,90,40])}</div></div>
+    </div>`,
+  linearIssue: () => `
+    <div style="display:flex;height:100%;background:#f5f5f6">
+      <div style="width:210px;padding:16px 14px;font-size:13px;color:#3c4149">
+        <div class="row" style="font-weight:600">${avatar("#e8639b","AC")} Acme</div>
+        ${["Inbox","My issues","Reviews","Projects"].map(t => `<div style="margin-top:14px">${t}</div>`).join("")}
+      </div>
+      <div style="flex:1;background:#fff;margin:8px 8px 0 0;border-radius:8px 8px 0 0;border:1px solid #e6e6e8">
+        <div class="row" style="padding:12px 18px;border-bottom:1px solid #eee;font-size:13px;color:#555">Settings refresh › <b style="color:#222">${ISSUE}</b></div>
+        <div style="display:flex;gap:28px;padding:30px 36px">
+          <div style="flex:1"><div style="font-size:26px;font-weight:600">${TITLE}</div>${lines(5)}</div>
+          <div style="width:220px;font-size:13px;color:#555">
+            <div style="margin-bottom:12px">In Review</div>
+            <div style="color:#999;margin-bottom:6px">Diffs</div>
+            <div class="row" style="border:1px solid #eee;border-radius:6px;padding:8px 10px">#${PR} ${TITLE.slice(0,18)}…</div>
+          </div>
+        </div>
+      </div>
+    </div>`,
+  linearReview: () => `
+    <div style="display:flex;height:100%;background:#f5f5f6">
+      <div style="width:210px;padding:16px 14px;font-size:13px;color:#3c4149">
+        <div class="row" style="font-weight:600">${avatar("#e8639b","AC")} Acme</div>
+        ${["Inbox","My issues","Reviews","Projects"].map((t,i) => `<div style="margin-top:14px;${i==2?"font-weight:600;color:#111":""}">${t}</div>`).join("")}
+      </div>
+      <div style="flex:1;background:#fff;margin:8px 8px 0 0;border-radius:8px 8px 0 0;border:1px solid #e6e6e8">
+        <div class="row" style="padding:12px 18px;border-bottom:1px solid #eee;font-size:13px;color:#555">${ISSUE} › Review · acme/web#${PR}</div>
+        <div style="padding:20px 28px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9">
+          <div style="color:#555;margin-bottom:6px">src/settings/Theme.tsx</div>
+          ${[["#e6ffec","+  const [mode, setMode] = useTheme();"],["#e6ffec","+  return &lt;Toggle value={mode} onChange={setMode} /&gt;;"],["#ffebe9","-  return null;"],["#fff","   // TODO: follow system preference"]].map(([b,t]) => `<div style="background:${b};padding:0 8px">${t}</div>`).join("")}
+        </div>
+      </div>
+    </div>`,
+};
+const URLS = {
+  graphite: `app.graphite.com/<b>github/pr/acme/web/${PR}</b>/add-dark-mode`,
+  github: `github.com/<b>acme/web/pull/${PR}</b>`,
+  linearIssue: `linear.app/acme/<b>issue/${ISSUE}</b>/add-dark-mode-to-settings-page`,
+  linearReview: `linear.app/acme/<b>review/add-dark-mode-2f9c41ab</b>/review`,
+};
+const TABIDX = { linearIssue: 0, linearReview: 1, github: 2, graphite: 3 };
+
+function browser(surface, { x, y, w, h, zoom = 1, colored = true, barOpts }) {
+  const el = document.createElement("div");
+  el.className = "win";
+  Object.assign(el.style, { left: x + "px", top: y + "px", width: w / zoom + "px", height: h / zoom + "px", zoom });
+  el.innerHTML = tabstrip(colored, TABIDX[surface]) +
+    `<div class="omni"><span class="nav">‹ › ↻</span><div class="url">${URLS[surface]}</div></div>`;
+  el.appendChild(navbar(surface, barOpts));
+  const page = document.createElement("div");
+  page.className = "page"; page.style.height = "100%"; page.innerHTML = PAGES[surface]();
+  el.appendChild(page);
+  return el;
+}
+
+function place(c, el, x, y, zoom = 1) {
+  const w = document.createElement("div");
+  w.style.cssText = `position:absolute;left:${x}px;top:${y}px`;
+  el.style.position = "relative"; el.style.left = el.style.top = ""; el.style.zoom = zoom;
+  w.appendChild(el); c.appendChild(w); return w;
+}
+function canvas(w, h) {
+  const c = document.createElement("div");
+  c.className = "canvas"; c.style.width = w + "px"; c.style.height = h + "px";
+  c.innerHTML = `<div class="stripe"><i></i><i></i><i></i><i></i></div>`;
+  document.getElementById("root").appendChild(c);
+  return c;
+}
+const text = (c, html, css) => { const d = document.createElement("div"); d.style.cssText = "position:absolute;" + css; d.innerHTML = html; c.appendChild(d); return d; };
+
+// ================= slides =================
+const SLIDES = {
+  // 1 — hero
+  1() {
+    const c = canvas(1280, 800);
+    text(c, `<div class="kicker"><img src="${ICON}">graptilubear</div>
+      <h1>Always know which tool you're in.</h1>
+      <p class="sub">A color-coded navbar on every GitHub PR, Graphite PR, Linear issue, and Linear review, with one-click jumps between them.</p>`,
+      "left:80px;top:64px;right:80px");
+    c.appendChild(browser("graphite", { x: 80, y: 330, w: 1120, h: 560 }));
+  },
+  // 2 — you are here
+  2() {
+    const c = canvas(1280, 800);
+    text(c, `<h1>Jump to any of the four in one click.</h1>
+      <p class="sub">Each page gets its own color, and the other three are always a click away.</p>`,
+      "left:80px;top:60px;right:80px");
+    const order = ["linearIssue", "github", "graphite", "linearReview"];
+    order.forEach((s, i) => {
+      const card = document.createElement("div");
+      card.className = "win";
+      Object.assign(card.style, { width: 1120 / 1.3 + "px", height: 100 / 1.3 + "px", borderRadius: "10px" });
+      card.appendChild(navbar(s));
+      const p = document.createElement("div"); p.className = "page"; p.style.height = "300px"; p.innerHTML = PAGES[s]();
+      card.appendChild(p);
+      place(c, card, 80, 196 + i * 148, 1.3);
+    });
+  },
+  // 3 — tabs
+  3() {
+    const c = canvas(1280, 800);
+    text(c, `<h1>Tell your tabs apart.</h1>
+      <p class="sub">Graphite and both Linear pages share the PR's title and near-identical black icons. graptilubear tints each tab icon to match its bar. GitHub's icon is left alone so its CI status still shows.</p>`,
+      "left:80px;top:60px;right:80px");
+    const strip = (colored, top, lbl) => {
+      text(c, `<div class="label">${lbl}</div>`, `left:80px;top:${top}px`);
+      const w = document.createElement("div");
+      w.className = "win";
+      Object.assign(w.style, { width: 1120 / 1.4 + "px", height: "42px", borderRadius: "8px" });
+      w.innerHTML = tabstrip(colored, -1).replace('class="tabs"', 'class="tabs" style="padding-left:10px"').replace(/<div class="lights">.*?<\/div>/, "").replace(/class="tab"/g, 'class="tab" style="width:193px"');
+      place(c, w, 80, top + 34, 1.4);
+    };
+    strip(false, 340, "Before");
+    strip(true, 520, "With graptilubear");
+  },
+  // 4 — how it works + privacy
+  4() {
+    const c = canvas(1280, 800);
+    text(c, `<h1>Links fill in as you browse.</h1>`, "left:80px;top:60px;right:80px");
+    const cards = [
+      ["GitHub ↔ Graphite", "Built straight from the URL. The org, repo, and PR number are in both, so these links always work."],
+      ["Linear, remembered", "Linear issue and review links are picked up from the pages you visit and saved. Once you've seen them together, they resolve from any of the four."],
+      ["Out of the way", "Click × to fold the bar into a small corner tab and get the space back. It stays folded until you open it."],
+      ["Private by design", "Everything is stored in your browser. No account, no server, no analytics, no network requests."],
+    ];
+    cards.forEach(([t, b], i) => {
+      const x = 80 + (i % 2) * 570, y = 180 + Math.floor(i / 2) * 300;
+      text(c, `<div class="card" style="width:550px;height:280px;padding:30px 32px">
+        <div style="font-size:26px;font-weight:700;margin-bottom:12px">${t}</div>
+        <div style="font-size:18px;line-height:1.45;color:var(--mute)">${b}</div>
+        <div class="demo" style="margin-top:22px"></div></div>`, `left:${x}px;top:${y}px`);
+    });
+    const demos = c.querySelectorAll(".demo");
+    // card 1: URL pair
+    demos[0].innerHTML = `<div style="font:13px ui-monospace,Menlo,monospace;color:#c9d1d9;line-height:1.9">
+      github.com/<b style="color:var(--gh)">acme/web/pull/${PR}</b><br>app.graphite.com/github/pr/<b style="color:var(--gr)">acme/web/${PR}</b></div>`;
+    // card 2: bar on the issue page with review not yet learned
+    const b2 = navbar("linearIssue", { disabled: ["linearReview"] }); b2.style.cssText = "display:block;zoom:.76;width:640px;border-radius:6px;overflow:hidden";
+    demos[1].appendChild(b2);
+    demos[1].insertAdjacentHTML("beforeend", `<div style="font-size:13px;color:var(--mute);margin-top:10px">Not seen yet? That button stays greyed out until it is.</div>`);
+    // card 3: collapsed handle
+    const b3 = navbar("graphite", { collapsed: true }); b3.style.cssText = "display:block;position:relative;height:40px;zoom:1.3";
+    demos[2].appendChild(b3);
+    demos[2].style.cssText += ";position:relative;height:40px;background:#fff;border-radius:6px;overflow:hidden";
+    // card 4: lock
+    demos[3].innerHTML = `<div class="row" style="gap:10px;color:#c9d1d9;font-size:14px"><span style="font-size:22px">🔒</span> chrome.storage.local · on this device only</div>`;
+  },
+  // small promo tile 440×280
+  tile() {
+    const c = canvas(440, 280);
+    text(c, `<img src="${ICON}" style="width:96px;height:96px;display:block;margin:0 auto 10px">
+      <div style="text-align:center;font-size:30px;font-weight:800;letter-spacing:-.02em">graptilubear</div>
+      <div style="text-align:center;font-size:15px;color:var(--mute);margin-top:6px">Jump between GitHub, Graphite & Linear</div>`,
+      "left:20px;right:20px;top:42px");
+  },
+  // marquee 1400×560
+  marquee() {
+    const c = canvas(1400, 560);
+    text(c, `<div class="kicker"><img src="${ICON}">graptilubear</div>
+      <h1 style="font-size:54px">Always know which<br>tool you're in.</h1>
+      <p class="sub" style="max-width:500px">Jump between the GitHub PR, Graphite PR, Linear issue, and Linear review in one click.</p>`,
+      "left:80px;top:110px;width:560px");
+    c.appendChild(browser("linearIssue", { x: 660, y: 90, w: 820, h: 520 }));
+  },
+};
+SLIDES[S]();
+</script>
+</body>
+</html>
