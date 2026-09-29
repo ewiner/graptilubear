@@ -61,8 +61,14 @@ Strip query/hash before parsing. The Linear-review hash is the trailing `[0-9a-f
     *inside* the transformed body → shifted `BAR_HEIGHT` too **low** (over the cursor). Fix:
     `[data-popper-placement]{translate:0 -BAR}`. Popper drives them with an inline `transform` that
     `margin-top` can't budge; the separate **`translate`** property composes with it. Vertical only.
-  - Each selector is inert on the other site (GitHub has no Popper portals; Linear emits no
-    `[popover]`), so the single rule set is safe on every surface.
+  - **GitHub** dialogs/drawers (Primer `Dialog`, e.g. the "Merge status" drawer) live in a
+    `[class*="prc-Dialog-Backdrop"]` that is `position:fixed; inset:0` *inside* the transformed
+    body → the backdrop becomes document-tall and the drawer lands mid-page. Fix: pin the backdrop
+    at `top:<viewport offset in body>`, `height:calc(100vh - BAR)`, cap the dialog at
+    `max-height:100%`. The offset is baked into the style text and recaptured on every
+    capture-phase `click`/`keydown`; it stays valid because Primer locks page scroll while open.
+  - Each selector is inert on the other sites (GitHub has no Popper portals; Linear emits no
+    `[popover]`; only GitHub uses Primer), so the single rule set is safe on every surface.
 - **Favicon (`favicon.js`):** Graphite / Linear Issue / Linear Review tabs carry the same PR
   title and near-identical black-and-white favicons, so we swap in copies of each site's own
   favicon SVG with the background square filled in the surface accent. **GitHub is left alone** —

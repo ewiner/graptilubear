@@ -53,8 +53,17 @@
   //    move; the separate `translate` property composes with that transform instead of clobbering
   //    it. Vertical only — the desync is purely the translateY of the push.
   //
-  // Each selector is inert on the other site (GitHub has no Popper portals; Linear emits no
-  // `[popover]`), so the one rule set is safe everywhere.
+  //  • GitHub dialogs/drawers (Primer React `Dialog`, e.g. the "Merge status" drawer behind the
+  //    merge-state button) sit in a `prc-Dialog-Backdrop-<hash>` that is position:fixed; inset:0
+  //    INSIDE the transformed <body> — so its containing block is the whole body, not the
+  //    viewport: the backdrop becomes document-tall and the drawer centers somewhere mid-page.
+  //    Re-pin it to the viewport below the bar: `top` = the viewport's current offset within
+  //    <body>, height = viewport minus bar, and cap the dialog at the backdrop's height. The
+  //    offset is only stable because Primer locks page scroll while a dialog is open; it's
+  //    captured on every click/keydown (see start()), i.e. just before any dialog can open.
+  //
+  // Each selector is inert on the other sites (GitHub has no Popper portals; Linear emits no
+  // `[popover]`; only GitHub uses Primer), so the one rule set is safe everywhere.
   let overlayFixEl = null;
   function applyOverlayFix(px) {
     if (!px) {
@@ -69,9 +78,15 @@
       overlayFixEl.id = "gbl-overlay-fix";
       (document.head || document.documentElement).appendChild(overlayFixEl);
     }
+    // Viewport top (just under the bar) expressed in <body>'s coordinates; body's rect includes
+    // the transform.
+    const vpTop = document.body ? Math.round(px - document.body.getBoundingClientRect().top) : 0;
     const css =
       `[popover]:popover-open{margin-top:${px}px !important}` +
-      `[data-popper-placement]{translate:0 -${px}px !important}`;
+      `[data-popper-placement]{translate:0 -${px}px !important}` +
+      `[class*="prc-Dialog-Backdrop"]{top:${vpTop}px !important;bottom:auto !important;` +
+      `height:calc(100vh - ${px}px) !important}` +
+      `[class*="prc-Dialog-Backdrop"]>[class*="prc-Dialog-Dialog"]{max-height:100% !important}`;
     if (overlayFixEl.textContent !== css) overlayFixEl.textContent = css;
   }
 
@@ -406,6 +421,13 @@
     });
     setInterval(tick, 700);
     window.addEventListener("pageshow", tick);
+    // Re-capture the scroll offset for the Primer dialog fix right before a dialog could open
+    // (capture phase, so it runs ahead of the site's own handlers).
+    const refreshOverlayFix = () => {
+      if (pushedPx > 0) applyOverlayFix(pushedPx);
+    };
+    document.addEventListener("click", refreshOverlayFix, true);
+    document.addEventListener("keydown", refreshOverlayFix, true);
     // Graphite renders nothing while the tab is hidden (React defers the whole PR view), so a
     // background-opened tab burns its whole SCRAPE_RETRY_MAX budget on an empty DOM and has given
     // up by the time the user looks at it. Becoming visible earns a fresh budget.
