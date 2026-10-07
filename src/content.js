@@ -110,12 +110,25 @@
     return obs;
   }
 
+  // The review's own PR is the header button labelled "<org>/<repo>#<n>, pull request actions"
+  // (present on the Overview, Guide and Diff tabs). The Overview tab also lists the stack's other
+  // PRs ("Linked pull request, … #10867 …"), which is why we key on this label and not on a "#n".
+  // There is no github.com/…/pull/ anchor on the page any more; kept as a fallback.
+  const REVIEW_PR_LABEL = /^([^/\s]+)\/([^#\s]+)#(\d+), pull request actions$/;
+
   function scrapeLinearReview() {
     const obs = {};
-    const gh = document.querySelector('a[href*="github.com"][href*="/pull/"]');
-    if (gh) {
-      const p = GBL.parse(GBL.absolute(gh.getAttribute("href")));
+    const prs = new Map();
+    for (const b of document.querySelectorAll('[aria-label$=", pull request actions"]')) {
+      const m = REVIEW_PR_LABEL.exec(b.getAttribute("aria-label") || "");
+      if (m) prs.set(`${m[1]}/${m[2]}#${m[3]}`, { org: m[1], repo: m[2], prNumber: Number(m[3]) });
+    }
+    if (!prs.size) {
+      const gh = document.querySelector('a[href*="github.com"][href*="/pull/"]');
+      const p = gh && GBL.parse(GBL.absolute(gh.getAttribute("href")));
       if (p && p.surface === "github") obs.pr = { org: p.org, repo: p.repo, prNumber: p.prNumber };
+    } else if (prs.size === 1) {
+      obs.pr = [...prs.values()][0];
     }
     const iss = document.querySelector('a[href*="/issue/"]');
     if (iss) {
@@ -191,7 +204,7 @@
 
   // buildObservation: the self identifiers from the URL + whatever we can scrape now.
   function buildObservation(parsed) {
-    const obs = {};
+    const obs = { source: parsed.surface };
     if (parsed.surface === "github" || parsed.surface === "graphite") {
       obs.pr = { org: parsed.org, repo: parsed.repo, prNumber: parsed.prNumber };
       Object.assign(obs, parsed.surface === "github" ? scrapeGithub() : scrapeGraphite());
@@ -216,7 +229,9 @@
   function getRecord(observation) {
     const local = {
       linearIssue: observation.linearIssue || null,
-      linearReviews: observation.linearReview ? [observation.linearReview] : [],
+      linearReviews: observation.linearReview
+        ? [{ ...observation.linearReview, pr: observation.pr || null }]
+        : [],
       prs: observation.pr ? [observation.pr] : [],
     };
     return new Promise((resolve) => {
@@ -231,24 +246,56 @@
     });
   }
 
+  // An item (one Linear issue) can carry several PRs, each with its own review. Each review
+  // entry records its PR (`pr`, see store.js addReview), so the PR surfaces and the review
+  // surface resolve each other by that pairing. Recency (the array's last entry) is only the
+  // fallback for the Linear Issue page and for pairings not observed yet.
+  const samePr = (a, b) =>
+    !!a && !!b && a.org === b.org && a.repo === b.repo && a.prNumber === b.prNumber;
+  const isPrSurface = (parsed) => parsed.surface === "github" || parsed.surface === "graphite";
+  const last = (l) => l[l.length - 1];
+
+  function currentReview(record, parsed) {
+    if (parsed.surface !== "linearReview" || !record || !record.linearReviews) return null;
+    return record.linearReviews.find((r) => r.hash === parsed.hash) || null;
+  }
+
   function pickPr(record, parsed) {
     if (!record || !record.prs || !record.prs.length) return null;
-    if (parsed.surface === "github" || parsed.surface === "graphite") {
-      const m = record.prs.find(
-        (p) => p.org === parsed.org && p.repo === parsed.repo && p.prNumber === parsed.prNumber
-      );
+    const want = isPrSurface(parsed) ? parsed : (currentReview(record, parsed) || {}).pr;
+    if (want) {
+      const m = record.prs.find((p) => samePr(p, want));
       if (m) return m;
     }
-    return record.prs[record.prs.length - 1];
+    return last(record.prs);
   }
 
   function pickReview(record, parsed) {
     if (!record || !record.linearReviews || !record.linearReviews.length) return null;
-    if (parsed.surface === "linearReview") {
-      const m = record.linearReviews.find((r) => r.hash === parsed.hash);
-      if (m) return m;
+    const revs = record.linearReviews;
+    if (parsed.surface === "linearReview") return currentReview(record, parsed) || last(revs);
+    if (isPrSurface(parsed)) {
+      const mine = revs.filter((r) => samePr(r.pr, parsed));
+      if (mine.length) return last(mine);
+      // Never link to a review known to belong to a different PR.
+      const unpaired = revs.filter((r) => !r.pr);
+      return unpaired.length ? last(unpaired) : null;
     }
-    return record.linearReviews[record.linearReviews.length - 1];
+    return last(revs);
+  }
+
+  // True once the PR ↔ review choice is backed by an observed pairing (or there is nothing to
+  // choose between) — until then tick() keeps re-scraping rather than settling on a guess.
+  function pairingSettled(record, parsed) {
+    if (parsed.surface === "linearReview") {
+      const r = currentReview(record, parsed);
+      return !!(r && r.pr) || record.prs.length <= 1;
+    }
+    if (isPrSurface(parsed)) {
+      const revs = record.linearReviews;
+      return revs.some((r) => samePr(r.pr, parsed)) || revs.length <= 1;
+    }
+    return true;
   }
 
   function resolveLinks(parsed, record) {
@@ -399,7 +446,13 @@
     const pr = pickPr(record, parsed);
 
     // stop retrying once everything resolves
-    if (links.github && links.graphite && links.linearIssue && links.linearReview) {
+    if (
+      links.github &&
+      links.graphite &&
+      links.linearIssue &&
+      links.linearReview &&
+      pairingSettled(record, parsed)
+    ) {
       attempts = SCRAPE_RETRY_MAX;
     }
     renderBar(parsed, links, pr ? pr.prNumber : null, record && record.linearIssue);

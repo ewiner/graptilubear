@@ -60,14 +60,20 @@ function addPr(item, pr) {
   item.prs.push(e);
 }
 
-function addReview(item, lr) {
+// A review belongs to exactly one PR; `pr` records that pairing so a multi-PR item resolves
+// review ↔ PR by pairing instead of recency. `authoritative` (the observation came from the
+// review page itself) may overwrite an existing pairing; other sources only fill a null one.
+function addReview(item, lr, authoritative) {
   const i = item.linearReviews.findIndex((r) => sameReview(r, lr));
   let e;
-  if (i === -1) e = { workspace: lr.workspace, slug: lr.slug, hash: lr.hash };
+  if (i === -1) e = { workspace: lr.workspace, slug: lr.slug, hash: lr.hash, pr: null };
   else {
     e = item.linearReviews.splice(i, 1)[0];
     if (lr.slug && !e.slug) e.slug = lr.slug;
+    if (e.pr === undefined) e.pr = null;
   }
+  if (lr.pr && (authoritative || !e.pr))
+    e.pr = { org: lr.pr.org, repo: lr.pr.repo, prNumber: lr.pr.prNumber };
   item.linearReviews.push(e);
 }
 
@@ -78,7 +84,8 @@ function setIssue(item, li) {
 
 function mergeFields(item, obs) {
   if (obs.pr) addPr(item, obs.pr);
-  if (obs.linearReview) addReview(item, obs.linearReview);
+  if (obs.linearReview)
+    addReview(item, { ...obs.linearReview, pr: obs.pr || null }, obs.source === "linearReview");
   if (obs.linearIssue) setIssue(item, obs.linearIssue);
   item.updatedAt = Date.now();
 }
@@ -106,7 +113,7 @@ function mergeObservation(db, obs) {
     for (const loser of items.slice(1)) {
       if (loser === item) continue;
       loser.prs.forEach((p) => addPr(item, p));
-      loser.linearReviews.forEach((r) => addReview(item, r));
+      loser.linearReviews.forEach((r) => addReview(item, r, false));
       if (loser.linearIssue) setIssue(item, loser.linearIssue);
       delete db.items[loser.id];
     }

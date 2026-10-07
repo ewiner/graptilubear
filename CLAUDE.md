@@ -82,13 +82,18 @@ Strip query/hash before parsing. The Linear-review hash is the trailing `[0-9a-f
 ```
 { schemaVersion: 1,
   items: { "<id>": { id, linearIssue:{workspace,issueId,slug}|null,
-                     linearReviews:[{workspace,slug,hash}], prs:[{org,repo,prNumber,graphiteSlug|null}],
+                     linearReviews:[{workspace,slug,hash,pr:{org,repo,prNumber}|null}],
+                     prs:[{org,repo,prNumber,graphiteSlug|null}],
                      updatedAt } },
   index: { byPr:{"org/repo#pr":id}, byIssue:{"workspace/ISSUE-ID":id}, byReview:{"workspace/hash":id} } }
 ```
 
 - Indices store **ids only**. **Ids never change once assigned** — enrich a record, never re-key it.
 - `prs` / `linearReviews` are arrays → handle stacked PRs / multiple reviews per issue.
+- Each review's `pr` is its pairing. PR surfaces pick the review paired with them (never one paired
+  with another PR); the review surface picks its paired PR. Recency (last array entry) is only the
+  fallback. The review page's own scrape (`source:"linearReview"`) may overwrite a pairing; GitHub /
+  Graphite scrapes only fill a null one. `tick()` keeps re-scraping until the pairing is known.
 - `mergeObservation`: 0 index matches → create; 1 → field-merge (union arrays, fill nulls); 2+ →
   two records are the same item, merge into the oldest id and repoint the losers' index entries.
 
@@ -100,7 +105,10 @@ These were verified live (logged in) on PR #456 / ABC-123. If a button stops res
   (`/issue/` vs `/review/`). PR title: `.js-issue-title`. ⚠ Only present on the **conversation tab**
   (not `/files`, `/checks`) — memory covers those. Graphite link is CONSTRUCTED (the page lists the
   whole stack, which is noisy).
-- **Linear review page** — GitHub PR: `a[href*="github.com"][href*="/pull/"]`. Issue breadcrumb:
+- **Linear review page** — GitHub PR: the header button `[aria-label="<org>/<repo>#<n>, pull request
+  actions"]` (on the Overview, Guide and Diff tabs; the page has no `github.com/…/pull/` anchor, only
+  commit links — that selector is kept as a fallback). Don't match a bare `#n`: the Overview tab
+  also lists the stack's other PRs ("Linked pull request, … #10867 …"). Issue breadcrumb:
   `a[href*="/issue/"]`.
 - **Linear issue page** — issue id from URL / `document.title`. PR attachments are `a[href*="/review/"]`
   anchors whose subtree text shows a PR `#<number>`. ⚠ An issue can link **many** PRs (ABC-123 links
